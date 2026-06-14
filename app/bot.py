@@ -41,7 +41,7 @@ class DirectorBot:
         await self.application.initialize()
         await self.application.start()
         await self.application.updater.start_polling(drop_pending_updates=False)
-        logger.info("Бот запущен")
+        logger.info("Bot started")
         await asyncio.Event().wait()
 
     def _configure_schedule(self) -> None:
@@ -57,7 +57,7 @@ class DirectorBot:
             replace_existing=True,
         )
         logger.info(
-            "Ежедневный отчёт запланирован на %02d:%02d (%s)",
+            "Daily report scheduled for %02d:%02d (%s)",
             hour,
             minute,
             self.settings.timezone,
@@ -87,7 +87,7 @@ class DirectorBot:
     async def _reject_if_unauthorized(self, update: Update) -> bool:
         if self._is_authorized(update):
             return False
-        await update.effective_chat.send_message("Доступ к отчёту разрешён только руководителю клуба.")
+        await update.effective_chat.send_message("Access to reports is allowed only for the club owner.")
         return True
 
     async def _send_current_report(self, chat_id: int) -> None:
@@ -96,41 +96,40 @@ class DirectorBot:
 
     async def _scheduled_send_report(self) -> None:
         if self.owner_chat_id is None:
-            logger.warning("OWNER_TELEGRAM_ID не задан, автоматическая отправка пропущена")
+            logger.warning("OWNER_TELEGRAM_ID is not set, skipping scheduled report")
             return
 
         try:
             await self._send_current_report(self.owner_chat_id)
-            logger.info("Ежедневный отчёт отправлен в Telegram")
+            logger.info("Daily report sent to Telegram")
         except Exception:
-            logger.exception("Не удалось отправить ежедневный отчёт")
+            logger.exception("Failed to send daily report")
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._is_private_chat(update):
             return
         chat_id = update.effective_chat.id
-        username = update.effective_user.username or "не указан"
+        username = update.effective_user.username or "not-set"
         if self.settings.owner_telegram_username and username.lower() == self.settings.owner_telegram_username.lower():
             self.owner_chat_id = chat_id
-            logger.info("Получен chat_id руководителя @%s: %s", username, chat_id)
+            logger.info("Received owner chat_id @%s: %s", username, chat_id)
         await update.effective_chat.send_message(
-            f"Ваш Telegram ID: `{chat_id}`\n"
+            f"Telegram ID: {chat_id}\n"
             f"Username: @{username}\n\n"
-            "Команды:\n"
-            "/today - отправить отчёт по текущим данным\n"
-            "/report - отправить отчёт по текущим данным\n"
-            "/help - показать команды",
-            parse_mode="Markdown",
+            "Commands:\n"
+            "/today - send the current report\n"
+            "/report - send the current report\n"
+            "/help - show commands"
         )
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._is_private_chat(update):
             return
         await update.effective_chat.send_message(
-            "/start - показать ваш Telegram ID\n"
-            "/today - отправить отчёт по текущим данным листа \"Кибер 2.0\"\n"
-            "/report - отправить отчёт по текущим данным листа \"Кибер 2.0\"\n"
-            "/help - показать команды"
+            "/start - show your Telegram ID\n"
+            "/today - send the current report from sheet \"Кибер 2.0\"\n"
+            "/report - send the current report from sheet \"Кибер 2.0\"\n"
+            "/help - show commands"
         )
 
     async def today(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -144,4 +143,4 @@ class DirectorBot:
         await self._send_current_report(update.effective_chat.id)
 
     async def on_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-        logger.exception("Ошибка Telegram: %s", context.error)
+        logger.exception("Telegram error: %s", context.error)
